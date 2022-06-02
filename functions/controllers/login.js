@@ -81,10 +81,17 @@ login.get("/sign-in/:username-:password", async (req, res) => {
       })
     }).then(r => r.json());
 
+    if (response.error)
+    {
+      return handleResponse(res, username, response.error.code, response.error.message);
+    }
+
+    let user = userSnapshot.data();
+    user.token = response.idToken;
+
     return handleResponse(res, username, 200, {
       username: username,
-      token: response.idToken,
-      ...userSnapshot.data()
+      ...user
     });
   }
 });
@@ -131,56 +138,10 @@ login.get("/sign-in-admin/:username-:password", async (req, res) => {
     return handleResponse(res, username, response.error.code, response.error.message);
   }
 
-
   return handleResponse(res, username, 200, {
     username: username,
     token: response.idToken
   });
-
-  // //check username, password
-  // const userSnapshot = await admin.firestore().collection("admins").doc(username).get();
-
-  // if (!userSnapshot.exists)
-  // {
-  //   return handleResponse(res, username, 401, "username of admin is not exists");
-  // }
-  // else
-  // {
-  //   try {
-  //     if(password != userSnapshot.data().password)
-  //     {
-  //       return handleResponse(res, username, 401, "password is not correct");
-  //     }
-  //   } catch (error) {
-  //     console.log(err);
-  //     return handleResponse(res, username, 500);
-  //   }
-
-  //   // const additionalClaims = {
-  //   //   adminRole: true
-  //   // };
-
-  //   // const token = await admin.auth().createCustomToken(req.params.username, additionalClaims);
-  //   const tokenURL = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyC8FE3pSDKPpreuE31QBD5ZQEmbXEYEtG4';
-  //   const response = await fetch(tokenURL, {
-  //     method: 'POST',
-  //     headers: {
-  //       'Content-Type': 'application/json'
-  //     },
-  //     body: JSON.stringify({
-  //       email: username,
-  //       password: password,
-  //       returnSecureToken: true
-  //     })
-  //   }).then(r => r.json());
-  //   console.log(response);
-
-  //   return handleResponse(res, username, 200, {
-  //     username: username,
-  //     token: response.idToken,
-  //     ...userSnapshot.data()
-  //   });
-  // }
 });
 
 login.post("/sign-up", async (req, res) => {
@@ -209,11 +170,69 @@ login.post("/sign-up", async (req, res) => {
   else
   {
     delete body.username;
+    delete body.token;
     body.password = bcrypt.hashSync(body.password, 12);
+
+    //add level data
+    let levelsArray = (await admin.firestore().collection("levels").get()).docs.map((doc) => doc);
+
+    //convert array to map
+    let levelsMap = new Map(levelsArray.map(doc => [doc.id, {
+      levelNumber: parseInt(doc.id),
+      score: 0,
+      state: doc.id == 1 ? 2 : 0
+    }]));
+
+    levelsMap.delete("version");
+    body.levelDatas = Object.fromEntries(levelsMap);
+
     await userSnapshot.ref.create(body).then(() => {
       return handleResponse(res, username, 200);
     }).catch(() => {
       return handleResponse(res, username, 401, "something wrong!!!");
     })
   }
+});
+
+login.put("/reset-password-admin/:email", async (req, res) => {
+  const username = req.params.email;
+  const tokenURL = 'https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=AIzaSyC8FE3pSDKPpreuE31QBD5ZQEmbXEYEtG4';
+  const response = await fetch(tokenURL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      requestType: 'PASSWORD_RESET',
+      email: username
+    })
+  }).then(r => r.json());
+
+  if (response.error)
+  {
+    return handleResponse(res, username, response.error.code, response.error.message);
+  }
+
+  return handleResponse(res, username, 200);
+});
+
+login.post("/update-all-map", async (req, res) => {
+  const body = req.body;
+
+  let myMap = new Map(Object.entries(body.maps));
+  myMap.forEach(async (value, key) => {
+    await admin.firestore().collection("levels").doc(key).set(value).catch((err) => {
+      console.log(err);
+      return handleResponse(res, "all", 500);
+    });
+  });
+
+  await admin.firestore().collection("levels").doc("version").set({
+    version: body.version
+  }, { merge: true }).catch((err) => {
+    console.log(err);
+    return handleResponse(res, "all", 500);
+  });
+
+  return handleResponse(res, "all", 200);
 });

@@ -43,13 +43,6 @@ adminApp.post("/sign-up", async (req, res) => {
   const user = await admin.auth().getUserByEmail(req.user.email);
   if (user.customClaims && body.code && body.code == user.customClaims.verifyCode) {
     functions.logger.log("verify code succesfully");
-
-    //reset code
-    const additionalClaims = {
-      adminRole: true,
-      verifyCode: null
-    };
-    admin.auth().setCustomUserClaims(user.uid, additionalClaims);
   } else {
     return handleResponse(res, req.user.email, 400, "invalid code");
   }
@@ -79,7 +72,7 @@ adminApp.post("/sign-up", async (req, res) => {
       returnSecureToken: true
     })
   }).then(r => r.json());
-  console.log(response);
+  functions.logger.log(response);
 
   if (response.error)
   {
@@ -92,6 +85,9 @@ adminApp.post("/sign-up", async (req, res) => {
   };
   const newUser = await admin.auth().getUserByEmail(username);
   await admin.auth().setCustomUserClaims(newUser.uid, additionalClaims);
+
+  //reset code
+  admin.auth().setCustomUserClaims(user.uid, additionalClaims);
 
   return handleResponse(res, username, 200);
 });

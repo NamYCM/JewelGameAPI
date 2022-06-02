@@ -3,7 +3,7 @@ const functions = require("firebase-functions");
 const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
-const middleWare = require("../authMiddleWare");
+const middleWare = require("../authUserMiddleWare");
 
 const admin = require("firebase-admin");
 const serviceAccount = require("./testapi-d3e3a-firebase-adminsdk-ugz7c-283145ec96.json")

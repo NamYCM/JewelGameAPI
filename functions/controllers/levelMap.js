@@ -2,12 +2,17 @@ const functions = require("firebase-functions");
 const express = require("express");
 const cors = require("cors");
 const middleAdminWare = require("../authAdminMiddleWare");
+const middleWare = require("../authMiddleWare");
 
 const admin = require("firebase-admin");
 
-const levelMap = express();
-levelMap.use(cors({ origin: true }));
-levelMap.use(middleAdminWare)
+const editLevelMap = express();
+const getLevelMap = express();
+
+editLevelMap.use(cors({ origin: true }));
+editLevelMap.use(middleAdminWare)
+getLevelMap.use(cors({ origin: true }));
+getLevelMap.use(middleWare)
 
 //trigger
 exports.updateLevelMap = functions.firestore.document("levels/{levelNumber}").onUpdate(async (snap, context) => {
@@ -133,7 +138,7 @@ function handleResponse (response, levelNumber, status, body){
   return response.sendStatus(status);
 };
 
-levelMap.post("/update-all-map", async (req, res) => {
+editLevelMap.post("/update-all-map", async (req, res) => {
   const body = req.body;
 
   let myMap = new Map(Object.entries(body.maps));
@@ -154,7 +159,7 @@ levelMap.post("/update-all-map", async (req, res) => {
   return handleResponse(res, "all", 200);
 });
 
-levelMap.post("/add-map", async (req, res) => {
+editLevelMap.post("/add-map", async (req, res) => {
   const body = req.body;
 
   //no plus 1 because in levels collection has version field
@@ -178,7 +183,7 @@ levelMap.post("/add-map", async (req, res) => {
   });
 });
 
-levelMap.put("/update-map", async (req, res) => {
+editLevelMap.put("/update-map", async (req, res) => {
   const body = req.body;
 
   let myMap = new Map(Object.entries(body));
@@ -192,7 +197,7 @@ levelMap.put("/update-map", async (req, res) => {
   });
 });
 
-levelMap.get("/get-all-map", async (req, res) => {
+getLevelMap.get("/get-all-map", async (req, res) => {
   admin.firestore().collection("levels").get().then((querySnapshot) => {
     let docsTemp = querySnapshot.docs.map((doc) => doc);
 
@@ -212,8 +217,9 @@ levelMap.get("/get-all-map", async (req, res) => {
   });
 });
 
-levelMap.get("/get-current-version-of-map", async (req, res) => {
+getLevelMap.get("/get-current-version-of-map", async (req, res) => {
   return handleResponse(res, "all", 200, (await admin.firestore().collection("levels").doc("version").get()).data());
 });
 
-exports.levelMap = functions.https.onRequest(levelMap);
+exports.editLevelMap = functions.https.onRequest(editLevelMap);
+exports.getLevelMap = functions.https.onRequest(getLevelMap);
