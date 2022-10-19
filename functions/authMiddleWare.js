@@ -1,6 +1,7 @@
 const admin = require("firebase-admin");
 const functions = require('firebase-functions');
 
+// auth for all roles and don't check version
 module.exports = validateFirebaseIdToken = async (req, res, next) => {
   functions.logger.log('Check if request is authorized with Firebase ID token');
 
@@ -20,7 +21,7 @@ module.exports = validateFirebaseIdToken = async (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
     functions.logger.log('Found "Authorization" header');
     // Read the ID Token from the Authorization header.
-    idToken = req.headers.authorization.split('Bearer ')[1];
+    idToken = req.headers.authorization.split(' ')[1];
   } else if(req.cookies) {
     functions.logger.log('Found "__session" cookie');
     // Read the ID Token from cookie.
@@ -34,7 +35,7 @@ module.exports = validateFirebaseIdToken = async (req, res, next) => {
   try {
     const decodedIdToken = await admin.auth().verifyIdToken(idToken);
     functions.logger.log('ID Token correctly decoded', decodedIdToken);
-
+  
     req.user = decodedIdToken;
     next();
     return;

@@ -197,6 +197,32 @@ editLevelMap.put("/update-map", async (req, res) => {
   });
 });
 
+editLevelMap.delete("/delete-map/:levelNumber", async (req, res) => {
+  let levelCollection = admin.firestore().collection("levels");
+  let levelSnapshot = (await levelCollection.get());
+  let deleledLevel = Number.parseInt(req.params.levelNumber);
+
+  if (isNaN(deleledLevel)) {
+    handleResponse(res, req.params.levelNumber, 401, "level number is not correct");
+    return;
+  }
+
+  for (let levelNumber = deleledLevel; levelNumber <= levelSnapshot.size - 1; levelNumber++) {
+    if (levelNumber == levelSnapshot.size - 1) {
+      await levelCollection.doc((levelNumber).toString()).delete().catch((err) => {
+        handleResponse(res, req.params.levelNumber, 500, err);
+      }).then(() => {
+        handleResponse(res, req.params.levelNumber, 200);
+      });
+      return;
+    } else {
+      await levelCollection.doc(levelNumber.toString()).set((await levelCollection.doc((levelNumber + 1).toString()).get()).data()).catch((err) => {
+        handleResponse(res, req.params.levelNumber, 500, err);
+      });
+    }
+  }
+});
+
 getLevelMap.get("/get-all-map", async (req, res) => {
   admin.firestore().collection("levels").get().then((querySnapshot) => {
     let docsTemp = querySnapshot.docs.map((doc) => doc);

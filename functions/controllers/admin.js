@@ -87,7 +87,7 @@ adminApp.post("/sign-up", async (req, res) => {
   await admin.auth().setCustomUserClaims(newUser.uid, additionalClaims);
 
   //reset code
-  admin.auth().setCustomUserClaims(user.uid, additionalClaims);
+  // admin.auth().setCustomUserClaims(user.uid, additionalClaims);
 
   return handleResponse(res, username, 200);
 });
@@ -109,12 +109,13 @@ adminApp.put("/send-verify-gmail", async (req, res) => {
       return handleResponse(res, req.user.email, 400, err.toString());
     }
 
+    const user = await admin.auth().getUserByEmail(req.user.email);
     const additionalClaims = {
-      adminRole: true,
+      adminRole: user.customClaims.adminRole,
+      userRole: user.customClaims.userRole,
       verifyCode: code
     };
-    const user = await admin.auth().getUserByEmail(req.user.email);
-
+    
     await admin.auth().setCustomUserClaims(user.uid, additionalClaims);
     return handleResponse(res, req.user.email, 200);
   });

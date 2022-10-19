@@ -16,11 +16,24 @@ module.exports = validateFirebaseIdToken = async (req, res, next) => {
     return;
   }
 
-  let idToken;
+  let infor, idToken, version, currentVersion;
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
     functions.logger.log('Found "Authorization" header');
     // Read the ID Token from the Authorization header.
-    idToken = req.headers.authorization.split('Bearer ')[1];
+    // infor = req.headers.authorization.split(' ');
+    // if (infor.length < 3) {
+    //   // No version
+    //   res.status(403).send('Not found version');
+    //   return;
+    // } 
+    // idToken = infor[1];
+    // version = infor[2];
+    // currentVersion = (await admin.firestore().collection("levels").doc("version").get()).data().version;
+    // if (version != currentVersion) {
+    //   res.status(403).send('Version is out of date');
+    //   return;
+    // }
+    idToken = req.headers.authorization.split(' ')[1];
   } else if(req.cookies) {
     functions.logger.log('Found "__session" cookie');
     // Read the ID Token from cookie.
